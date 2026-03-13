@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Préparation CRPE - Technologie : L'Énergie</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configuration des couleurs Tailwind pour respecter le thème "nuances de bleu" -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        meef: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Styles spécifiques pour le Glisser-Déposer et les animations */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .draggable { cursor: grab; transition: transform 0.2s; }
+        .draggable:active { cursor: grabbing; transform: scale(0.95); }
+        .dropzone { min-height: 60px; transition: background-color 0.3s; }
+        .dropzone.dragover { background-color: #e0f2fe; border-color: #0ea5e9; }
+        
+        .fade-in { animation: fadeIn 0.4s ease-in-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Accessibilité : masquer visuellement mais garder pour les lecteurs d'écran */
+        .sr-only {
+            position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+            overflow: hidden; clip: rect(0, 0, 0, 0); border: 0;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- En-tête -->
+    <header class="bg-meef-900 text-white shadow-md p-4">
+        <div class="max-w-4xl mx-auto flex justify-between items-center">
+            <div>
+                <h1 class="text-xl font-bold">Préparation CRPE - Sciences & Technologie</h1>
+                <p class="text-meef-100 text-sm">Thème : L'Énergie (Formes, sources, conversions et efficacité)</p>
+            </div>
+            <div class="text-right">
+                <span id="score-display" class="font-semibold bg-meef-800 px-3 py-1 rounded-full">Score: 0</span>
+            </div>
+        </div>
+        <!-- Barre de progression -->
+        <div class="max-w-4xl mx-auto mt-3 bg-meef-800 rounded-full h-2">
+            <div id="progress-bar" class="bg-meef-500 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+        </div>
+    </header>
+
+    <!-- Conteneur principal -->
+    <main class="flex-grow max-w-4xl w-full mx-auto p-4 flex flex-col items-center justify-center relative">
+        
+        <!-- Écran d'accueil -->
+        <div id="screen-start" class="bg-white p-8 rounded-xl shadow-lg w-full text-center fade-in">
+            <h2 class="text-3xl font-bold text-meef-800 mb-4">Testez vos connaissances sur l'Énergie</h2>
+            <p class="mb-6 text-slate-600 text-lg">
+                Ce module d'entraînement est conçu pour les étudiants Master MEEF (préparation au CRPE).<br>
+                Il aborde les sources, les formes, les conversions et l'efficacité énergétique.
+            </p>
+            <div class="bg-meef-50 border-l-4 border-meef-500 p-4 mb-6 text-left">
+                <p class="font-semibold text-meef-900">Consignes :</p>
+                <ul class="list-disc ml-5 text-meef-800 mt-2">
+                    <li>10 questions vous seront proposées (QCM et Glisser-Déposer).</li>
+                    <li>Un indice est disponible pour chaque question si vous bloquez.</li>
+                    <li>Lisez attentivement les retours pédagogiques après chaque question.</li>
+                </ul>
+            </div>
+            <button onclick="startQuiz()" class="bg-meef-600 hover:bg-meef-800 text-white font-bold py-3 px-8 rounded-lg shadow transition-colors text-lg">
+                Commencer l'entraînement
+            </button>
+        </div>
+
+        <!-- Écran de question -->
+        <div id="screen-question" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full fade-in">
+            <div class="flex justify-between items-center mb-6 border-b pb-4">
+                <h2 id="question-number" class="text-xl font-bold text-meef-600">Question 1/10</h2>
+                <button onclick="showHint()" id="btn-hint" class="text-sm bg-amber-100 text-amber-800 hover:bg-amber-200 px-3 py-1 rounded-full flex items-center transition-colors">
+                    💡 Demander un indice
+                </button>
+            </div>
+            
+            <div id="hint-container" class="hidden bg-amber-50 border border-amber-200 p-3 rounded-md mb-6 text-amber-900 text-sm italic fade-in">
+                <!-- Indice injecté ici -->
+            </div>
+
+            <h3 id="question-text" class="text-2xl font-semibold mb-6 text-slate-800">Texte de la question</h3>
+
+            <!-- Zone de réponse dynamique (QCM ou Drag&Drop) -->
+            <div id="answer-area" class="mb-8 min-h-[150px]">
+                <!-- Contenu injecté via JS -->
+            </div>
+
+            <div class="flex justify-end mt-4">
+                <button id="btn-validate" onclick="validateAnswer()" class="bg-meef-600 hover:bg-meef-800 text-white font-bold py-2 px-6 rounded shadow disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                    Valider la réponse
+                </button>
+            </div>
+        </div>
+
+        <!-- Écran de Feedback -->
+        <div id="screen-feedback" class="hidden w-full mt-4 fade-in">
+            <div id="feedback-card" class="p-6 rounded-xl shadow-lg border-l-8">
+                <div class="flex items-start">
+                    <div id="feedback-icon" class="text-4xl mr-4"></div>
+                    <div class="flex-grow">
+                        <h3 id="feedback-title" class="text-xl font-bold mb-2"></h3>
+                        <div id="feedback-content" class="text-slate-700 leading-relaxed mb-4"></div>
+                        <button onclick="nextQuestion()" class="bg-slate-800 hover:bg-slate-900 text-white font-semibold py-2 px-6 rounded transition-colors float-right">
+                            Question suivante ➔
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Écran de fin -->
+        <div id="screen-end" class="hidden bg-white p-8 rounded-xl shadow-lg w-full text-center fade-in">
+            <h2 class="text-3xl font-bold text-meef-800 mb-2">Entraînement terminé !</h2>
+            <p class="text-xl mb-6">Votre score final : <span id="final-score" class="font-bold text-2xl text-meef-600"></span> / 10</p>
+            <div id="final-message" class="mb-8 p-4 bg-meef-50 rounded text-left text-meef-900">
+                <!-- Message de fin injecté via JS -->
+            </div>
+            <button onclick="location.reload()" class="bg-meef-600 hover:bg-meef-800 text-white font-bold py-3 px-8 rounded-lg shadow transition-colors">
+                Recommencer
+            </button>
+        </div>
+
+    </main>
+
+    <footer class="text-center p-4 text-slate-500 text-sm mt-auto">
+        Conçu pour la préparation au CRPE - Master MEEF
+    </footer>
+
+    <!-- Logique de l'application -->
+    <script>
+        // --- BASE DE DONNÉES DES QUESTIONS ---
+        const quizData = [
+            {
+                type: 'qcm',
+                question: "Quelle est l'origine et la signification du mot « énergie » ?",
+                options: [
+                    "Du latin 'energetica', signifiant 'chaleur'.",
+                    "Du grec 'energia', signifiant 'force en action'.",
+                    "Du latin 'energus', signifiant 'lumière'.",
+                    "Du grec 'energa', signifiant 'matière transformée'."
+                ],
+                correctAnswer: "Du grec 'energia', signifiant 'force en action'.",
+                hint: "L'énergie est ce qui permet d'agir, de mettre en mouvement.",
+                feedback: "Le mot énergie provient du grec <em>energia</em>, qui signifie « force en action ». En sciences, l'énergie est la capacité d'un système à produire un travail, entraînant un mouvement, de la lumière ou de la chaleur."
+            },
+            {
+                type: 'dnd-group',
+                question: "Classez ces sources d'énergie dans les bonnes catégories.",
+                hint: "Les sources renouvelables sont produites en permanence par la nature, contrairement aux fossiles ou fissiles.",
+                items: [
+                    { id: 'i1', text: 'Charbon' },
+                    { id: 'i2', text: 'Vent' },
+                    { id: 'i3', text: 'Uranium' },
+                    { id: 'i4', text: 'Soleil' },
+                    { id: 'i5', text: 'Géothermie' },
+                    { id: 'i6', text: 'Pétrole' }
+                ],
+                categories: [
+                    { id: 'renouvelable', title: 'Renouvelables', expected: ['i2', 'i4', 'i5'] },
+                    { id: 'non-renouvelable', title: 'Non renouvelables', expected: ['i1', 'i3', 'i6'] }
+                ],
+                feedback: "<strong>Renouvelables :</strong> Vent, Eau, Soleil, Géothermie, Animaux, Végétaux. Elles se renouvellent naturellement à l'échelle humaine.<br><strong>Non renouvelables :</strong> Charbon, Gaz, Pétrole (fossiles) et Uranium (fissile). Leurs stocks sont limités sur Terre."
+            },
+            {
+                type: 'qcm',
+                question: "Quelle est la différence fondamentale entre une FORMES et une SOURCE d'énergie ?",
+                options: [
+                    "C'est la même chose, les deux termes sont synonymes.",
+                    "La source est l'élément naturel dont on extrait l'énergie, la forme est la manière dont elle se manifeste.",
+                    "La forme est d'origine naturelle (ex: le vent), la source est d'origine artificielle (ex: la pile).",
+                    "La forme est toujours renouvelable, la source ne l'est pas."
+                ],
+                correctAnswer: "La source est l'élément naturel dont on extrait l'énergie, la forme est la manière dont elle se manifeste.",
+                hint: "Le vent est un élément de la nature. Le mouvement de l'air est sa manifestation.",
+                feedback: "Au CRPE, il est crucial de ne pas confondre les deux. La <strong>source</strong> est l'origine (soleil, uranium, vent). La <strong>forme</strong> est sa manifestation physique (lumineuse, thermique, nucléaire, mécanique)."
+            },
+            {
+                type: 'dnd-match',
+                question: "Associez les formes d'énergie à leurs exemples concrets.",
+                hint: "Pensez à ce qui se produit physiquement dans chaque situation.",
+                pairs: [
+                    { matchId: 'm1', concept: 'Énergie Chimique', itemText: 'Corps humain / Batterie' },
+                    { matchId: 'm2', concept: 'Énergie Mécanique', itemText: 'Air en mouvement' },
+                    { matchId: 'm3', concept: 'Énergie Rayonnante', itemText: 'Lumière du soleil' }
+                ],
+                feedback: "L'énergie <strong>chimique</strong> est stockée dans les liaisons des molécules (pile, aliments pour le muscle). L'énergie <strong>mécanique</strong> est l'énergie du mouvement (cinétique) et de position. L'énergie <strong>rayonnante</strong> (ou lumineuse) est transportée par les rayonnements (soleil, ampoule)."
+            },
+            {
+                type: 'qcm',
+                question: "Lorsqu'une éolienne fonctionne, quelle conversion d'énergie s'opère principalement ?",
+                options: [
+                    "Énergie électrique ➔ Énergie mécanique",
+                    "Énergie rayonnante ➔ Énergie électrique",
+                    "Énergie mécanique ➔ Énergie électrique",
+                    "Énergie thermique ➔ Énergie mécanique"
+                ],
+                correctAnswer: "Énergie mécanique ➔ Énergie électrique",
+                hint: "L'éolienne utilise le mouvement du vent en entrée.",
+                feedback: "Le vent met en mouvement les pales (<strong>énergie mécanique en entrée</strong>). Ce mouvement entraîne une génératrice qui produit de l'électricité (<strong>énergie électrique en sortie</strong>)."
+            },
+            {
+                type: 'dnd-match',
+                question: "Reconstituez la chaîne de conversion d'un panneau photovoltaïque.",
+                hint: "Que capte le panneau solaire et que produit-il pour nos maisons ?",
+                pairs: [
+                    { matchId: 'm1', concept: 'Énergie d\'entrée', itemText: 'Énergie Rayonnante' },
+                    { matchId: 'm2', concept: 'Convertisseur', itemText: 'Capteur photovoltaïque' },
+                    { matchId: 'm3', concept: 'Énergie de sortie (utile)', itemText: 'Énergie Électrique' }
+                ],
+                feedback: "Le panneau photovoltaïque convertit l'énergie <strong>rayonnante</strong> du soleil (entrée) directement en énergie <strong>électrique</strong> (sortie). Note pédagogique : il y a toujours une perte, souvent sous forme d'énergie thermique."
+            },
+            {
+                type: 'qcm',
+                question: "Comment appelle-t-on le phénomène où l'énergie électrique est convertie en énergie thermique (chaleur), comme dans un four ou un grille-pain ?",
+                options: [
+                    "L'effet Volta",
+                    "L'effet Joule",
+                    "L'électrolyse",
+                    "La thermolyse"
+                ],
+                correctAnswer: "L'effet Joule",
+                hint: "Ce terme porte le nom du physicien anglais qui l'a étudié au 19e siècle.",
+                feedback: "<strong>L'effet Joule</strong> est le dégagement de chaleur provoqué par le passage d'un courant électrique dans un conducteur (résistance). Il est utile dans un radiateur, mais représente une « perte » dans une ampoule ou un moteur."
+            },
+            {
+                type: 'qcm',
+                question: "Quelle est la définition exacte de l'efficacité énergétique ?",
+                options: [
+                    "C'est le fait qu'un appareil consomme très peu d'électricité.",
+                    "C'est le rapport entre l'énergie consommée et le coût financier.",
+                    "C'est le rapport entre l'énergie restituée utilement en sortie et l'énergie consommée en entrée.",
+                    "C'est la quantité totale d'énergie qu'un appareil peut stocker."
+                ],
+                correctAnswer: "C'est le rapport entre l'énergie restituée utilement en sortie et l'énergie consommée en entrée.",
+                hint: "Il ne faut pas confondre efficacité énergétique et faible consommation.",
+                feedback: "L'efficacité énergétique se calcule par : <strong>Efficacité = Énergie de sortie (utile) / Énergie d'entrée (consommée)</strong>. Un appareil peut consommer peu mais ne rien produire d'utile, il serait donc inefficace."
+            },
+            {
+                type: 'qcm',
+                question: "Pourquoi une lampe à LED (Classe A) a-t-elle une meilleure efficacité énergétique qu'une lampe à incandescence (Classe G) ?",
+                options: [
+                    "Parce que la LED convertit 99% de l'énergie en lumière et perd 1% en chaleur.",
+                    "Parce que l'ampoule à incandescence ne consomme pas d'électricité.",
+                    "Parce que la LED crée de l'énergie à partir de rien.",
+                    "Parce que l'ampoule à incandescence produit 95% de lumière et 5% de chaleur."
+                ],
+                correctAnswer: "Parce que la LED convertit 99% de l'énergie en lumière et perd 1% en chaleur.",
+                hint: "Rappelez-vous que l'ampoule classique chauffe beaucoup.",
+                feedback: "Une lampe à incandescence est très énergivore car elle dissipe <strong>95% de l'énergie électrique en chaleur</strong> (perte) pour seulement 5% de lumière (énergie utile). La LED fait l'inverse (99% de lumière utile), d'où sa classe A."
+            },
+            {
+                type: 'dnd-match',
+                question: "Complétez le bilan de conversion d'un moteur électrique (ex: un ventilateur).",
+                hint: "Qu'est-ce qui fait tourner le ventilateur, et que produit-il de manière indésirable ?",
+                pairs: [
+                    { matchId: 'm1', concept: 'Énergie consommée', itemText: 'Énergie Électrique' },
+                    { matchId: 'm2', concept: 'Énergie utile restituée', itemText: 'Énergie Mécanique' },
+                    { matchId: 'm3', concept: 'Pertes (frottements/Joule)', itemText: 'Énergie Thermique' }
+                ],
+                feedback: "Le schéma de conversion (chaîne énergétique) est fondamental à maîtriser pour le concours. Un convertisseur (le moteur) transforme l'énergie <strong>électrique</strong> entrante en énergie <strong>mécanique</strong> (rotation), mais avec inévitablement des pertes sous forme <strong>thermique</strong> (le moteur chauffe)."
+            }
+        ];
+
+        // --- ÉTAT DE L'APPLICATION ---
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let currentDraggedItem = null;
+
+        // --- ÉLÉMENTS DU DOM ---
+        const ui = {
+            screenStart: document.getElementById('screen-start'),
+            screenQuestion: document.getElementById('screen-question'),
+            screenFeedback: document.getElementById('screen-feedback'),
+            screenEnd: document.getElementById('screen-end'),
+            questionNumber: document.getElementById('question-number'),
+            questionText: document.getElementById('question-text'),
+            answerArea: document.getElementById('answer-area'),
+            btnValidate: document.getElementById('btn-validate'),
+            progressBar: document.getElementById('progress-bar'),
+            scoreDisplay: document.getElementById('score-display'),
+            hintContainer: document.getElementById('hint-container'),
+            btnHint: document.getElementById('btn-hint'),
+            feedbackCard: document.getElementById('feedback-card'),
+            feedbackIcon: document.getElementById('feedback-icon'),
+            feedbackTitle: document.getElementById('feedback-title'),
+            feedbackContent: document.getElementById('feedback-content'),
+            finalScore: document.getElementById('final-score'),
+            finalMessage: document.getElementById('final-message')
+        };
+
+        // --- FONCTIONS PRINCIPALES ---
+
+        function startQuiz() {
+            ui.screenStart.classList.add('hidden');
+            ui.screenQuestion.classList.remove('hidden');
+            currentQuestionIndex = 0;
+            score = 0;
+            updateUI();
+            renderQuestion();
+        }
+
+        function updateUI() {
+            ui.scoreDisplay.textContent = `Score: ${score}`;
+            const progress = (currentQuestionIndex / quizData.length) * 100;
+            ui.progressBar.style.width = `${progress}%`;
+        }
+
+        function renderQuestion() {
+            const q = quizData[currentQuestionIndex];
+            ui.questionNumber.textContent = `Question ${currentQuestionIndex + 1} / ${quizData.length}`;
+            ui.questionText.innerHTML = q.question;
+            
+            // Réinitialiser la zone d'indice
+            ui.hintContainer.innerHTML = q.hint;
+            ui.hintContainer.classList.add('hidden');
+            ui.btnHint.classList.remove('hidden');
+
+            // Réinitialiser la zone de réponse et le feedback
+            ui.answerArea.innerHTML = '';
+            ui.screenFeedback.classList.add('hidden');
+            ui.btnValidate.disabled = true; // Désactivé tant qu'il n'y a pas de réponse
+            ui.btnValidate.classList.remove('hidden');
+
+            if (q.type === 'qcm') renderQCM(q);
+            else if (q.type === 'dnd-group') renderDnDGroup(q);
+            else if (q.type === 'dnd-match') renderDnDMatch(q);
+        }
+
+        // --- RENDUS SPÉCIFIQUES PAR TYPE DE QUESTION ---
+
+        function renderQCM(q) {
+            const grid = document.createElement('div');
+            grid.className = 'grid grid-cols-1 md:grid-cols-2 gap-4';
+            
+            q.options.forEach((opt, index) => {
+                const label = document.createElement('label');
+                label.className = 'flex items-center p-4 border-2 border-slate-200 rounded-lg cursor-pointer hover:bg-blue-50 hover:border-meef-500 transition-colors bg-white';
+                
+                const input = document.createElement('input');
+                input.type = 'radio';
+                input.name = 'qcm-answer';
+                input.value = opt;
+                input.className = 'w-5 h-5 text-meef-600 focus:ring-meef-500 border-gray-300';
+                input.onchange = () => ui.btnValidate.disabled = false;
+
+                const span = document.createElement('span');
+                span.className = 'ml-3 text-slate-700 font-medium';
+                span.innerHTML = opt;
+
+                label.appendChild(input);
+                label.appendChild(span);
+                grid.appendChild(label);
+            });
+            ui.answerArea.appendChild(grid);
+        }
+
+        function renderDnDGroup(q) {
+            const container = document.createElement('div');
+            container.className = 'flex flex-col gap-6';
+
+            // Zone des items à glisser
+            const itemsBank = document.createElement('div');
+            itemsBank.id = 'bank';
+            itemsBank.className = 'flex flex-wrap gap-3 p-4 bg-slate-100 rounded-lg min-h-[80px] border-2 border-dashed border-slate-300 dropzone';
+            
+            // Mélanger les items
+            const shuffledItems = [...q.items].sort(() => Math.random() - 0.5);
+            shuffledItems.forEach(item => {
+                const el = createDraggableItem(item.id, item.text);
+                itemsBank.appendChild(el);
+            });
+
+            // Zones de dépôt (Catégories)
+            const zonesContainer = document.createElement('div');
+            zonesContainer.className = 'grid grid-cols-1 md:grid-cols-2 gap-4';
+
+            q.categories.forEach(cat => {
+                const zoneBox = document.createElement('div');
+                zoneBox.className = 'bg-meef-50 rounded-lg p-4 border border-meef-200';
+                
+                const title = document.createElement('h4');
+                title.className = 'font-bold text-meef-800 text-center mb-3 border-b border-meef-200 pb-2';
+                title.textContent = cat.title;
+
+                const dropZone = document.createElement('div');
+                dropZone.id = cat.id;
+                dropZone.className = 'dropzone min-h-[100px] rounded flex flex-wrap gap-2 items-start content-start';
+                
+                setupDropZoneEvents(dropZone, () => checkDnDCompletion(q.type));
+
+                zoneBox.appendChild(title);
+                zoneBox.appendChild(dropZone);
+                zonesContainer.appendChild(zoneBox);
+            });
+
+            setupDropZoneEvents(itemsBank, () => checkDnDCompletion(q.type));
+
+            container.appendChild(itemsBank);
+            container.appendChild(zonesContainer);
+            ui.answerArea.appendChild(container);
+
+            // Indication pour l'utilisateur
+            const helpText = document.createElement('p');
+            helpText.className = 'text-sm text-slate-500 mt-2 text-center italic';
+            helpText.innerHTML = '<i class="fas fa-info-circle"></i> Glissez et déposez les étiquettes grises dans les catégories correspondantes.';
+            ui.answerArea.prepend(helpText);
+        }
+
+        function renderDnDMatch(q) {
+            const container = document.createElement('div');
+            container.className = 'flex flex-col gap-6';
+
+            // Banque d'items
+            const itemsBank = document.createElement('div');
+            itemsBank.id = 'bank';
+            itemsBank.className = 'flex flex-wrap gap-3 p-4 bg-slate-100 rounded-lg min-h-[80px] border-2 border-dashed border-slate-300 dropzone justify-center';
+            
+            const shuffledPairs = [...q.pairs].sort(() => Math.random() - 0.5);
+            shuffledPairs.forEach(pair => {
+                const el = createDraggableItem(pair.matchId, pair.itemText);
+                itemsBank.appendChild(el);
+            });
+
+            // Lignes de correspondance
+            const matchContainer = document.createElement('div');
+            matchContainer.className = 'flex flex-col gap-3';
+
+            q.pairs.forEach(pair => {
+                const row = document.createElement('div');
+                row.className = 'flex items-center justify-between bg-white border border-slate-200 p-3 rounded-lg shadow-sm';
+                
+                const concept = document.createElement('div');
+                concept.className = 'font-semibold text-meef-900 w-1/2 pr-4';
+                concept.innerHTML = pair.concept;
+
+                const dropArea = document.createElement('div');
+                dropArea.id = `zone-${pair.matchId}`;
+                dropArea.className = 'dropzone flex-1 border-2 border-dashed border-meef-300 bg-meef-50 rounded p-2 min-h-[50px] flex items-center justify-center';
+                
+                setupDropZoneEvents(dropArea, () => checkDnDCompletion(q.type));
+
+                row.appendChild(concept);
+                row.appendChild(dropArea);
+                matchContainer.appendChild(row);
+            });
+
+            setupDropZoneEvents(itemsBank, () => checkDnDCompletion(q.type));
+
+            container.appendChild(itemsBank);
+            container.appendChild(matchContainer);
+            ui.answerArea.appendChild(container);
+            
+            const helpText = document.createElement('p');
+            helpText.className = 'text-sm text-slate-500 mt-2 text-center italic';
+            helpText.innerHTML = 'Associez chaque étiquette à son concept correspondant en la glissant dans la zone pointillée.';
+            ui.answerArea.prepend(helpText);
+        }
+
+        // --- MOTEUR DRAG AND DROP ---
+
+        function createDraggableItem(id, text) {
+            const el = document.createElement('div');
+            el.id = id;
+            el.className = 'draggable bg-white border border-slate-300 text-slate-700 font-medium py-2 px-4 rounded shadow-sm cursor-move select-none';
+            el.draggable = true;
+            el.textContent = text;
+
+            el.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('text/plain', e.target.id);
+                e.target.style.opacity = '0.4';
+                currentDraggedItem = e.target;
+            });
+
+            el.addEventListener('dragend', (e) => {
+                e.target.style.opacity = '1';
+                currentDraggedItem = null;
+            });
+
+            // Accessibilité / Fallback clic (simple)
+            el.addEventListener('click', function() {
+                // Si l'élément est dans la banque, on le met dans la première zone vide (logique basique de clic)
+                if(this.parentElement.id === 'bank') {
+                    const emptyZone = document.querySelector('.dropzone:not(#bank):empty');
+                    if(emptyZone) emptyZone.appendChild(this);
+                } else {
+                    document.getElementById('bank').appendChild(this);
+                }
+                const q = quizData[currentQuestionIndex];
+                if(q.type.includes('dnd')) checkDnDCompletion(q.type);
+            });
+
+            return el;
+        }
+
+        function setupDropZoneEvents(zone, onDropCallback) {
+            zone.addEventListener('dragover', (e) => {
+                e.preventDefault(); // Nécessaire pour autoriser le drop
+                zone.classList.add('dragover');
+            });
+
+            zone.addEventListener('dragleave', () => {
+                zone.classList.remove('dragover');
+            });
+
+            zone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                zone.classList.remove('dragover');
+                const draggedId = e.dataTransfer.getData('text/plain');
+                const draggedEl = document.getElementById(draggedId);
+                
+                if (draggedEl) {
+                    // Pour Match: on n'accepte qu'un seul élément par zone cible
+                    if (zone.id.startsWith('zone-') && zone.children.length > 0) {
+                        // Renvoyer l'élément existant à la banque
+                        document.getElementById('bank').appendChild(zone.children[0]);
+                    }
+                    zone.appendChild(draggedEl);
+                    onDropCallback();
+                }
+            });
+        }
+
+        function checkDnDCompletion(type) {
+            const bank = document.getElementById('bank');
+            if (bank.children.length === 0) {
+                ui.btnValidate.disabled = false; // Tout a été placé
+            } else {
+                ui.btnValidate.disabled = true;
+            }
+        }
+
+        // --- LOGIQUE DE VALIDATION ---
+
+        function showHint() {
+            ui.hintContainer.classList.remove('hidden');
+            ui.btnHint.classList.add('hidden');
+        }
+
+        function validateAnswer() {
+            const q = quizData[currentQuestionIndex];
+            let isCorrect = false;
+
+            ui.btnValidate.classList.add('hidden'); // Cacher le bouton valider
+            ui.btnHint.classList.add('hidden');
+
+            if (q.type === 'qcm') {
+                const selected = document.querySelector('input[name="qcm-answer"]:checked');
+                if (selected && selected.value === q.correctAnswer) isCorrect = true;
+                
+                // Coloration visuelle QCM
+                document.querySelectorAll('input[name="qcm-answer"]').forEach(input => {
+                    input.disabled = true; // figer
+                    const label = input.parentElement;
+                    if (input.value === q.correctAnswer) {
+                        label.classList.replace('border-slate-200', 'border-green-500');
+                        label.classList.replace('bg-white', 'bg-green-50');
+                    } else if (input.checked && !isCorrect) {
+                        label.classList.replace('border-slate-200', 'border-red-500');
+                        label.classList.replace('bg-white', 'bg-red-50');
+                    }
+                });
+            } 
+            else if (q.type === 'dnd-group') {
+                let errors = 0;
+                q.categories.forEach(cat => {
+                    const zone = document.getElementById(cat.id);
+                    const placedIds = Array.from(zone.children).map(el => el.id);
+                    
+                    // Vérifier si tous les éléments attendus y sont et aucun intrus
+                    const hasAllExpected = cat.expected.every(id => placedIds.includes(id));
+                    const hasNoIntruders = placedIds.every(id => cat.expected.includes(id));
+                    
+                    if (!hasAllExpected || !hasNoIntruders) errors++;
+
+                    // Colorer les items
+                    Array.from(zone.children).forEach(el => {
+                        el.draggable = false;
+                        if(cat.expected.includes(el.id)) {
+                            el.classList.add('bg-green-100', 'border-green-500');
+                        } else {
+                            el.classList.add('bg-red-100', 'border-red-500');
+                        }
+                    });
+                });
+                isCorrect = (errors === 0);
+            }
+            else if (q.type === 'dnd-match') {
+                let errors = 0;
+                q.pairs.forEach(pair => {
+                    const zone = document.getElementById(`zone-${pair.matchId}`);
+                    const child = zone.children[0];
+                    if (child) {
+                        child.draggable = false;
+                        if (child.id === pair.matchId) {
+                            child.classList.add('bg-green-100', 'border-green-500');
+                            zone.classList.replace('border-meef-300', 'border-green-400');
+                        } else {
+                            child.classList.add('bg-red-100', 'border-red-500');
+                            zone.classList.replace('border-meef-300', 'border-red-400');
+                            errors++;
+                        }
+                    } else {
+                        errors++;
+                    }
+                });
+                isCorrect = (errors === 0);
+            }
+
+            if (isCorrect) score++;
+            showFeedback(isCorrect, q.feedback);
+        }
+
+        function showFeedback(isCorrect, feedbackText) {
+            ui.screenFeedback.classList.remove('hidden');
+            
+            if (isCorrect) {
+                ui.feedbackCard.className = 'p-6 rounded-xl shadow-lg border-l-8 border-green-500 bg-green-50 fade-in';
+                ui.feedbackIcon.innerHTML = '✅';
+                ui.feedbackIcon.className = 'text-4xl mr-4 text-green-600';
+                ui.feedbackTitle.textContent = 'Excellent !';
+                ui.feedbackTitle.className = 'text-xl font-bold mb-2 text-green-800';
+            } else {
+                ui.feedbackCard.className = 'p-6 rounded-xl shadow-lg border-l-8 border-red-500 bg-red-50 fade-in';
+                ui.feedbackIcon.innerHTML = '❌';
+                ui.feedbackIcon.className = 'text-4xl mr-4 text-red-600';
+                ui.feedbackTitle.textContent = 'Erreur';
+                ui.feedbackTitle.className = 'text-xl font-bold mb-2 text-red-800';
+            }
+
+            ui.feedbackContent.innerHTML = feedbackText;
+            updateUI();
+            
+            // Scroll vers le feedback
+            ui.screenFeedback.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function nextQuestion() {
+            currentQuestionIndex++;
+            if (currentQuestionIndex < quizData.length) {
+                renderQuestion();
+                ui.screenQuestion.scrollIntoView({ behavior: 'smooth' });
+            } else {
+                endQuiz();
+            }
+            updateUI();
+        }
+
+        function endQuiz() {
+            ui.screenQuestion.classList.add('hidden');
+            ui.screenFeedback.classList.add('hidden');
+            ui.screenEnd.classList.remove('hidden');
+            
+            ui.finalScore.textContent = score;
+            ui.progressBar.style.width = '100%';
+
+            let message = "";
+            if (score === 10) {
+                message = "<strong>Parfait !</strong> Vous maîtrisez parfaitement les concepts d'énergie, de source, de forme et d'efficacité. Vous êtes prêt(e) pour le CRPE sur ce sujet !";
+            } else if (score >= 7) {
+                message = "<strong>Très bon travail.</strong> Vous avez une bonne compréhension des systèmes énergétiques. Revoyez les points abordés dans les feedbacks pour viser l'excellence.";
+            } else if (score >= 4) {
+                message = "<strong>Des bases sont là</strong>, mais certaines confusions persistent (notamment entre forme et source, ou sur la chaîne de conversion). N'hésitez pas à recommencer l'entraînement.";
+            } else {
+                message = "<strong>Il faut revoir les fondamentaux.</strong> Prenez le temps de bien relire les documents sur les conversions d'énergie et la notion d'efficacité énergétique avant de retenter le quiz.";
+            }
+            ui.finalMessage.innerHTML = message;
+        }
+
+    </script>
+</body>
+</html>
